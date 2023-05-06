@@ -249,12 +249,13 @@ histdb () {
                -detail \
                -sep:- \
                -exact \
+               -fulltime \
                d h -help \
                s+::=sessions \
                -from:- -until:- -limit:- \
                -status:- -desc
 
-    local usage="usage:$0 terms [--desc] [--host[ x]] [--in[ x]] [--at] [-s n]+* [-d] [--detail] [--forget] [--yes] [--exact] [--sep x] [--from x] [--until x] [--limit n] [--status x]
+    local usage="usage:$0 terms [--desc] [--host[ x]] [--in[ x]] [--at] [-s n]+* [-d] [--detail] [--forget] [--yes] [--exact] [--fulltime] [--sep x] [--from x] [--until x] [--limit n] [--status x]
     --desc     reverse sort order of results
     --host     print the host column and show all hosts (otherwise current host)
     --host x   find entries from host x
@@ -267,6 +268,7 @@ histdb () {
     --forget   forget everything which matches in the history
     --yes      don't ask for confirmation when forgetting
     --exact    don't match substrings
+    --fulltime show full datetimecol instead
     --sep x    print with separator x, and don't tabulate
     --from x   only show commands after date x (sqlite date parser)
     --until x  only show commands before date x (sqlite date parser)
@@ -285,6 +287,7 @@ histdb () {
     local forget="0"
     local forget_accept=0
     local exact=0
+    local fulltime=0
 
     if (( ${#hosts} )); then
         local hostwhere=""
@@ -397,6 +400,9 @@ histdb () {
             --exact)
                 exact=1
                 ;;
+            --fulltime)
+                fulltime=1
+                ;;
             --limit*)
                 limit=${opt#--limit}
                 ;;
@@ -421,7 +427,11 @@ $seps') as argv, max(start_time) as max_start"
 
     local mst="datetime(max_start, 'unixepoch')"
     local dst="datetime('now', 'start of day')"
-    local timecol="strftime(case when $mst > $dst then '%H:%M' else '%d/%m' end, max_start, 'unixepoch', 'localtime') as time"
+    if [[ $fulltime = 1 ]]; then
+        local timecol="strftime('%Y-%m-%d %H:%M:%S', max_start, 'unixepoch', 'localtime') as datetime"
+    else
+        local timecol="strftime(case when $mst > $dst then '%H:%M' else '%d/%m' end, max_start, 'unixepoch', 'localtime') as time"
+    fi
 
     selcols="${timecol}, ${selcols}, argv as cmd"
 
